@@ -5,36 +5,43 @@
 #include <algorithm>
 #include <unordered_set>
 #include <type_traits>
-#include "numc.hpp"
 
 namespace SamH::numc
 {
 
 template <typename T>
-array<T>::array(size_t size, const T& elem)
+array<T>::array(arg_type size, const T& elem)
     : n_data(size, elem)
-{}
+{
+    n_dims.push_back(size);
+}
 
 template <typename T>
-array<T>::array(const T* arr, const size_t len)
+array<T>::array(const T* arr, const arg_type len)
 {
-    for (size_t i = 0; i < len; ++i) { n_data.push_back(arr[i]); }
+    for (arg_type i = 0; i < len; ++i) { n_data.push_back(arr[i]); }
+    n_dims.push_back(len);
 }
 
 template <typename T>
 array<T>::array(const std::vector<T>& vector) 
     : n_data(vector)
-{}
+{
+    n_dims.push_back(vector.size());
+}
 
 template <typename T>
 array<T>::array(const T* from, const T* to)
 {
-    for (T* i = from; i != to; ++i) { n_data.push_back(*i); }
+    arg_type size = 0;
+    for (T* i = from; i != to; ++i, ++size) { n_data.push_back(*i); }
+    n_dims.push_back(size);
 }
 
 template <typename T>
 array<T>::array(const array& rhv)
     : n_data(rhv.n_data)
+    , n_dims(rhv.n_dims)
 {}
 
 template <typename T>
@@ -50,6 +57,7 @@ array<T>::operator=(const array& rhv)
 {
     if (this != &rhv) {
         n_data = rhv.n_data;
+        n_dims = rhv.n_dims;
     }
     return *this;
 }
@@ -79,7 +87,7 @@ array<T>::operator()(arg_type begin, arg_type end, arg_type step) const
     if (end   < 0) { end   += n; }
 
     if (begin < 0) { begin = 0; }
-    if (end > n) { end = n; }
+    if (end   > n) { end = n; }
 
     array<T> result;
     if (step > 0) {
@@ -403,94 +411,46 @@ array<T>::argmax() const
 
 template <typename T>
 array<T>
-array<T>::operator+(const array<T> &rhv) const
+array<T>::operator+(const array<T>& rhv) const
 {
-    assert(size() == rhv.size());
-    array<T> temp(size());
-    for (size_t i = 0; i < n_data.size(); ++i) {
-        temp[i] = n_data[i] + rhv.n_data[i];
-    }
-    return temp;
-}
+    Broadcast flag = can_broadcast(*this, rhv);
+    if (flag == Broadcast::FIRST) { return calculate(broadcast(*this, rhv.n_dims), rhv,   Sign::SUM); }
+    else if (flag == Broadcast::SECOND) { return calculate(broadcast(rhv, n_dims), *this, Sign::SUM); }
 
-template <typename T>
-const array<T>&
-array<T>::operator+=(const array<T>& rhv)
-{
-    assert(size() == rhv.size());
-    for (size_t i = 0; i < n_data.size(); ++i) {
-        n_data[i] += rhv.n_data[i];
-    }
-    return *this;
+    return array<T>();
 }
 
 template <typename T>
 array<T> 
 array<T>::operator-(const array<T>& rhv) const
 {
-    assert(size() == rhv.size());
-    array<T> temp(size());
-    for (size_t i = 0; i < n_data.size(); ++i) {
-        temp[i] = n_data[i] - rhv.n_data[i];
-    }
-    return temp;
-}
+    Broadcast flag = can_broadcast(*this, rhv);
+    if (flag == Broadcast::FIRST) { return calculate(broadcast(*this, rhv.n_dims), rhv,   Sign::SUBTRACT); }
+    else if (flag == Broadcast::SECOND) { return calculate(broadcast(rhv, n_dims), *this, Sign::SUBTRACT); }
 
-template <typename T>
-const array<T>&
-array<T>::operator-=(const array<T>& rhv)
-{
-    assert(size() == rhv.size());
-    for (size_t i = 0; i < n_data.size(); ++i) {
-        n_data[i] -= rhv.n_data[i];
-    }
-    return *this;
+    return array<T>();
 }
 
 template <typename T>
 array<T> 
 array<T>::operator*(const array<T>& rhv) const
 {
-    assert(size() == rhv.size());
-    array<T> temp(size());
-    for (size_t i = 0; i < n_data.size(); ++i) {
-        temp[i] = n_data[i] * rhv.n_data[i];
-    }
-    return temp;
-}
+    Broadcast flag = can_broadcast(*this, rhv);
+    if (flag == Broadcast::FIRST) { return calculate(broadcast(*this, rhv.n_dims), rhv,   Sign::MULTIPLY); }
+    else if (flag == Broadcast::SECOND) { return calculate(broadcast(rhv, n_dims), *this, Sign::MULTIPLY); }
 
-template <typename T>
-const array<T>&
-array<T>::operator*=(const array<T>& rhv)
-{
-    assert(size() == rhv.size());
-    for (size_t i = 0; i < n_data.size(); ++i) {
-        n_data[i] *= rhv.n_data[i];
-    }
-    return *this;
+    return array<T>();
 }
 
 template <typename T>
 array<T> 
 array<T>::operator/(const array<T>& rhv) const
 {
-    assert(size() == rhv.size());
-    array<T> temp(size());
-    for (size_t i = 0; i < n_data.size(); ++i) {
-        temp[i] = n_data[i] / rhv.n_data[i];
-    }
-    return temp;
-}
+    Broadcast flag = can_broadcast(*this, rhv);
+    if (flag == Broadcast::FIRST) { return calculate(broadcast(*this, rhv.n_dims), rhv,   Sign::DIVIDE); }
+    else if (flag == Broadcast::SECOND) { return calculate(broadcast(rhv, n_dims), *this, Sign::DIVIDE); }
 
-template <typename T>
-const array<T>&
-array<T>::operator/=(const array<T>& rhv)
-{
-    assert(size() == rhv.size());
-    for (size_t i = 0; i < n_data.size(); ++i) {
-        n_data[i] /= rhv.n_data[i];
-    }
-    return *this;
+    return array<T>();
 }
 
 // Comparison operators
@@ -728,8 +688,112 @@ array<T>::print_dims() const
 }
 
 template <typename T>
-template <typename U> 
-array<U> 
+typename array<T>::Broadcast
+array<T>::can_broadcast(const array<T>& first, const array<T>& second)
+{
+    const std::vector<arg_type>& s1 = first.n_dims;
+    const std::vector<arg_type>& s2 = second.n_dims;
+
+    size_t n1 = s1.size();
+    size_t n2 = s2.size();
+    size_t n  = std::max(n1, n2);
+
+    bool needs_first  = false;
+    bool needs_second = false;
+
+    for (size_t i = 0; i < n; ++i) {
+        arg_type dim1 = (i < n - n1) ? 1 : s1[i - (n - n1)];
+        arg_type dim2 = (i < n - n2) ? 1 : s2[i - (n - n2)];
+
+        switch (0) {
+            case 0: // explicit switch for readability
+                if (dim1 == dim2) break;
+                if (dim1 == 1) { needs_first = true; break; }
+                if (dim2 == 1) { needs_second = true; break; }
+                return INVALID;
+        }
+    }
+
+    switch ((needs_first ? 1 : 0) + (needs_second ? 2 : 0)) {
+        case 0: return NONE;
+        case 1: return FIRST;
+        case 2: return SECOND;
+        case 3: return BOTH;
+    }
+    return INVALID; // fallback (shouldn’t happen)
+}
+
+template <typename T>
+array<T>
+array<T>::broadcast(const array<T>& arr, const std::vector<arg_type>& dims)
+{
+    // arr has shape arr.n_dims, we want to broadcast to dims
+    assert(dims.size() >= arr.n_dims.size());
+
+    // Check compatibility
+    for (size_t i = 0; i < arr.n_dims.size(); ++i) {
+        arg_type a = arr.n_dims[arr.n_dims.size() - 1 - i];
+        arg_type b = dims[dims.size() - 1 - i];
+        assert(a == b || a == 1); // broadcast rule
+    }
+
+    array<T> result;
+    result.n_dims = dims;
+
+    // compute total size
+    arg_type total = 1;
+    for (auto d : dims) total *= d;
+    result.n_data.reserve(total);
+
+    // Flattened repeat
+    std::vector<arg_type> stride(arr.n_dims.size(), 1);
+    for (int i = arr.n_dims.size() - 2; i >= 0; --i) {
+        stride[i] = stride[i + 1] * arr.n_dims[i + 1];
+    }
+
+    for (arg_type i = 0; i < total; ++i) {
+        // map i into arr index
+        arg_type idx = 0;
+        arg_type tmp = i;
+        for (int j = dims.size() - 1, k = arr.n_dims.size() - 1;
+             j >= 0; --j, --k) {
+            arg_type coord = tmp % dims[j];
+            tmp /= dims[j];
+
+            if (k >= 0) {
+                arg_type aj = arr.n_dims[k];
+                if (aj > 1) idx += coord * stride[k];
+            }
+        }
+        result.n_data.push_back(arr.n_data[idx]);
+    }
+    return result;
+}
+
+
+template <typename T>
+array<T> 
+array<T>::calculate(const array<T>& first, const array<T>& second, Sign sign)
+{
+    assert(first.size() == second.size());
+
+    array<T> result(first.size());
+    result.n_dims = first.n_dims;
+    for (arg_type i = 0; i < result.size(); ++i) {
+        switch (sign)
+        {
+        case Sign::SUM:      result[i] = first.n_data[i] + second.n_data[i]; break;
+        case Sign::SUBTRACT: result[i] = first.n_data[i] - second.n_data[i]; break;
+        case Sign::MULTIPLY: result[i] = first.n_data[i] * second.n_data[i]; break;
+        case Sign::DIVIDE:   result[i] = first.n_data[i] / second.n_data[i]; break;
+        }
+    }
+    return result;
+}
+
+template <typename T>
+template <typename U>
+array<U>
 array<T>::cast() const
 {
     array<U> result;

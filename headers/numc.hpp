@@ -12,8 +12,8 @@ public:
     using arg_type = int64_t;
 
 public:
-    array(size_t size = 0, const T& elem = T());
-    array(const T* arr, const size_t len);
+    array(arg_type size = 0, const T& elem = T());
+    array(const T* arr, const arg_type len);
     array(const std::vector<T>& vector);
     array(const T* from, const T* to);
     array(const array& rhv);
@@ -74,14 +74,10 @@ public:
     arg_type argmax() const;
 
     array<T> operator+(const array<T>& rhv) const;
-    const array<T>& operator+=(const array<T>& rhv);
     array<T> operator-(const array<T>& rhv) const;
-    const array<T>& operator-=(const array<T>& rhv);
     array<T> operator*(const array<T>& rhv) const;
-    const array<T>& operator*=(const array<T>& rhv);
     array<T> operator/(const array<T>& rhv) const;
-    const array<T>& operator/=(const array<T>& rhv);
-
+    
     array<bool> operator> (const array<T>& rhv) const;
     array<bool> operator< (const array<T>& rhv) const;
     array<bool> operator>=(const array<T>& rhv) const;
@@ -124,9 +120,32 @@ public:
     template <typename U> array<U> cast() const;
     void print_data() const;
     void print_dims() const;
+
+private:
+    enum Broadcast
+    {
+        NONE,
+        FIRST,
+        SECOND,
+        BOTH,
+        INVALID
+    };
+
+    enum Sign 
+    {
+        SUM,
+        SUBTRACT,
+        MULTIPLY,
+        DIVIDE
+    };
+
 private:
     template <typename U, typename List>
     friend array<U> make_array_impl(const List& init);
+
+    static Broadcast can_broadcast(const array<T>& first, const array<T>& second);
+    static array<T> broadcast(const array<T>& arr, const std::vector<arg_type>& dims);
+    static array<T> calculate(const array<T>& first, const array<T>& second, Sign sign);
 
 private:
     std::vector<T> n_data;
@@ -134,7 +153,7 @@ private:
 };
 
 array<bool> logical_and(const array<bool>& x, const array<bool>& y);
-array<bool> logical_or(const array<bool>& x, const array<bool>& y);
+array<bool> logical_or (const array<bool>& x, const array<bool>& y);
 array<bool> logical_not(const array<bool>& arr);
 
 }

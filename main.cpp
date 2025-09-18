@@ -12,8 +12,6 @@ int main()
     array<int> sliced2 = numpy(2, 4);
     auto sliced3 = numpy(-1, -4, -1);
     array<int> result = sliced1 + sliced2;
-    // result.print_data();
-    result *= sliced1;
     testSize[4] = 5;
     testSize[-2] = 4;
     testSize.print_data();
@@ -62,6 +60,18 @@ int main()
     auto d = make_array({{{{1, 2}, {3, 4}}, {{5, 6}, {7, 8}}}, {{{1, 2}, {3, 4}}, {{5, 6}, {7, 8}}}});
     d.print_data();
     d.print_dims();
+
+    array<int> e1 = {1, 2, 3};
+    array<int> e2 = make_array({{10,20,30}, {40,50,60}, {40,50,60}});
+
+    e1.print_data();
+    e2.print_data();
+
+    auto sum = e1 + e2;
+    auto sub = e1 - e2;
+
+    sum.print_data();
+    sub.print_data();
 
     return 0;
 }
