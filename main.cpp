@@ -1,26 +1,26 @@
 #include <iostream>
-#include "./headers/numc.hpp"
+#include "./headers/Array.hpp"
 
 using namespace SamH::numc;
 
 int main()
 {
     std::vector<int> v = {1, 2, 3, 4, 5, 6, 7};
-    array<int> numpy(v);
-    array<int> testSize(5);
-    array<int> sliced1 = numpy(1, 3);
-    array<int> sliced2 = numpy(2, 4);
-    auto sliced3 = numpy(-1, -4, -1);
-    array<int> result = sliced1 + sliced2;
+    Array<int> numpy(v);
+    Array<int> testSize(5);
+    Array<int> sliced1 = numpy({Slice(1, 3)});
+    Array<int> sliced2 = numpy({Slice(2, 4)});
+    Array<int> result = sliced1 + sliced2;
+    Array<int> sliced3 = numpy({Slice(-1, -4, -1)});
     testSize[4] = 5;
     testSize[-2] = 4;
     testSize.print_data();
+    std::cout << "------------------------" << std::endl;
     sliced1.print_data();
     sliced2.print_data();
     sliced3.print_data();
 
-
-    array<int> temp1(std::vector<int>({1, 4, 9, 16, 25, 36, 49, 64, 81}));
+    Array<int> temp1(std::vector<int>({1, 4, 9, 16, 25, 36, 49, 64, 81}));
     temp1.print_data();
     temp1 = temp1.sqrt();
     temp1.print_data();
@@ -31,7 +31,7 @@ int main()
     // arr.floor().printData();
     // arr.round().printData();
 
-    array<int> arr = {5, 2, 9, 1, 7};
+    Array<int> arr = {5, 2, 9, 1, 7};
     arr.print_dims();
 
     std::cout << "Min: " << arr.min() << "\n";      
@@ -39,8 +39,8 @@ int main()
     std::cout << "Argmin: " << arr.argmin() << "\n";
     std::cout << "Argmax: " << arr.argmax() << "\n";
 
-    array<int> a({1, 3, 0});
-    array<int> b({0, 3, 2});
+    Array<int> a({1, 3, 0});
+    Array<int> b({0, 3, 2});
     a[a >= b].print_data();
     a[a <= b].print_data();
 
@@ -49,9 +49,9 @@ int main()
 
     b[b > 1].print_data();
 
-    array<int> c = {1, -1, 2, -2, 3, -3, 4, -4};
+    Array<int> c = {1, -1, 2, -2, 3, -3, 4, -4};
 
-    array<int>::where(c > 0, 0, c).print_data();
+    Array<int>::where(c > 0, 0, c).print_data();
 
     auto test = make_array({{{1}, {2}}, {{2}, {3}}, {{3}, {4}}});
     test.print_data();
@@ -61,8 +61,10 @@ int main()
     d.print_data();
     d.print_dims();
 
-    array<int> e1 = {1, 2, 3};
-    array<int> e2 = make_array({{10,20,30}, {40,50,60}, {40,50,60}});
+    Array<int> e1 = {1, 2, 3};
+    Array<int> e2 = make_array({{10,20,30}, 
+                                {40,50,60}, 
+                                {70,80,90}});
 
     e1.print_data();
     e2.print_data();
@@ -72,6 +74,10 @@ int main()
 
     sum.print_data();
     sub.print_data();
+
+    e2({Slice(0, 2), Slice(0, 2)}) = {100, 200, 400, 500};
+    auto e3 = e2({Slice(0, 2), Slice(0, 2)});
+    e2.print_data();
 
     return 0;
 }

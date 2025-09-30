@@ -1,7 +1,6 @@
-#ifndef MAKE_ARRAY_HPP
-#define MAKE_ARRAY_HPP
+#pragma once
 
-#include "./numc.hpp"
+#include "./Array.hpp"
 
 namespace SamH::numc 
 {
@@ -13,19 +12,19 @@ using init_list = std::initializer_list<U>;
 // ----------------- Recursive implementation -----------------
 
 template <typename U, typename List>
-array<U> 
+Array<U> 
 make_array_impl(const List& init) 
 {
-    array<U> result;
+    Array<U> result;
 
     // check if the value type of List is T (1D)
     if constexpr (std::is_same_v<typename List::value_type, U>) {
         result.n_data.assign(init.begin(), init.end());
-        result.n_dims = { static_cast<typename array<U>::arg_type>(init.size()) };
+        result.n_dims = { static_cast<arg_type>(init.size()) };
     } else {
         // N-D recursive case
         std::vector<U> flat;
-        std::vector<typename array<U>::arg_type> dims;
+        std::vector<arg_type> dims;
 
         for (auto& sublist : init) {
             auto subarray = make_array_impl<U>(sublist); // recurse
@@ -34,7 +33,7 @@ make_array_impl(const List& init)
         }
 
         result.n_data = std::move(flat);    
-        result.n_dims = { static_cast<typename array<U>::arg_type>(init.size()) };
+        result.n_dims = { static_cast<arg_type>(init.size()) };
         result.n_dims.insert(result.n_dims.end(), dims.begin(), dims.end());
     }
 
@@ -65,7 +64,7 @@ make_array_impl(const List& init)
 // Macro to generate the make_array function for N-D
 #define MAKE_ARRAY_FUNC(N) \
 template<typename U> \
-array<U> make_array(init_list<MAKE_ARRAY_REPEAT(U, N)> init) { \
+Array<U> make_array(init_list<MAKE_ARRAY_REPEAT(U, N)> init) { \
     return make_array_impl<U>(init); \
 }
 
@@ -107,5 +106,4 @@ MAKE_ARRAY_FUNC(16)
 #undef MAKE_ARRAY_REPEAT_16
 #undef MAKE_ARRAY_FUNC
 
-} 
-#endif
+}

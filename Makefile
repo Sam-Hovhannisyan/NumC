@@ -2,7 +2,7 @@ CXX := g++
 CXXFLAGS := -std=c++17 -Wall -Iheaders -Itemplates
 LDFLAGS := -lgtest -lgtest_main -pthread
 
-# Only compile main and test sources (templates/numc.cpp is included in headers)
+# Only compile main and test sources (templates/Array.cpp is included in headers)
 SRC := main.cpp
 
 # Object files in build/
@@ -24,7 +24,7 @@ $(TARGET): $(OBJ)
 	$(CXX) $(CXXFLAGS) $^ -o $@
 
 # Compile .cpp -> .o
-build/%.o: %.cpp headers/numc.hpp
+build/%.o: %.cpp headers/Array.hpp
 	$(CXX) $(CXXFLAGS) -c $< -o $@
 
 # Run the program

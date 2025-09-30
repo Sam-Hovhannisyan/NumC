@@ -1,4 +1,4 @@
-#include "../headers/numc.hpp"
+#include "../headers/Array.hpp"
 #include <iostream>
 #include <cassert>
 #include <cmath>
@@ -10,28 +10,28 @@ namespace SamH::numc
 {
 
 template <typename T>
-array<T>::array(arg_type size, const T& elem)
+Array<T>::Array(arg_type size, const T& elem)
     : n_data(size, elem)
 {
     n_dims.push_back(size);
 }
 
 template <typename T>
-array<T>::array(const T* arr, const arg_type len)
+Array<T>::Array(const T* arr, const arg_type len)
 {
     for (arg_type i = 0; i < len; ++i) { n_data.push_back(arr[i]); }
     n_dims.push_back(len);
 }
 
 template <typename T>
-array<T>::array(const std::vector<T>& vector) 
+Array<T>::Array(const std::vector<T>& vector) 
     : n_data(vector)
 {
     n_dims.push_back(vector.size());
 }
 
 template <typename T>
-array<T>::array(const T* from, const T* to)
+Array<T>::Array(const T* from, const T* to)
 {
     arg_type size = 0;
     for (T* i = from; i != to; ++i, ++size) { n_data.push_back(*i); }
@@ -39,21 +39,86 @@ array<T>::array(const T* from, const T* to)
 }
 
 template <typename T>
-array<T>::array(const array& rhv)
+Array<T>::Array(const Array& rhv)
     : n_data(rhv.n_data)
     , n_dims(rhv.n_dims)
 {}
 
 template <typename T>
-array<T>::array(const std::initializer_list<T> &init)
+Array<T>::Array(const std::initializer_list<T> &init)
 {
     n_data.insert(n_data.end(), init.begin(), init.end());
     n_dims.push_back(init.size());
 }
 
 template <typename T>
-array<T>& 
-array<T>::operator=(const array& rhv)
+Array<T>::Array(const Viewer<T>& view)
+{
+    arg_type total_size = 1;
+    for (const auto& slice : view.views) {
+        arg_type current_dim_size = slice.size();
+        
+        if (current_dim_size == 0) {
+            total_size = 0;
+            break;
+        }
+        total_size *= current_dim_size;
+        this->n_dims.push_back(current_dim_size);
+    }
+
+    if (total_size == 0) {
+        return;
+    }
+
+    this->n_data.reserve(total_size);
+
+    std::vector<arg_type> coords(n_dims.size(), 0);
+    for (arg_type i = 0; i < total_size; ++i) {
+        this->n_data.push_back(view(coords));
+
+        for (int j = n_dims.size() - 1; j >= 0; --j) {
+            coords[j]++;
+            if (coords[j] < n_dims[j]) {
+                break;
+            }
+            coords[j] = 0;
+        }
+    }
+}
+
+// NON-CONST slicing operator (returns a read/write proxy)
+template <typename T>
+Viewer<T>
+Array<T>::operator()(const std::vector<Slice>& slices) {
+    Viewer<T> view(n_data.data(), n_data.data() + n_data.size(), 
+                   n_dims.data(), n_dims.data() + n_dims.size());
+    for (std::size_t d = 0; d < slices.size(); ++d) {
+        Slice s = slices[d];
+        s.normalize(n_dims[d]);   // adjust negatives relative to this dimension
+        view.views.push_back(s);
+    }
+    return view;
+}
+
+// CONST slicing operator (returns a new Array, read-only)
+template <typename T>
+Array<T> 
+Array<T>::operator()(const std::vector<Slice>& slices) const {
+    Viewer<T> view(const_cast<T*>(n_data.data()), 
+                   const_cast<T*>(n_data.data() + n_data.size()), 
+                   const_cast<arg_type*>(n_dims.data()), 
+                   const_cast<arg_type*>(n_dims.data() + n_dims.size()));
+    for (std::size_t d = 0; d < slices.size(); ++d) {
+        Slice s = slices[d];
+        s.normalize(n_dims[d]);   // adjust negatives relative to this dimension
+        view.views.push_back(s);
+    }
+    return Array<T>(view); // Uses the constructor we defined above
+}
+
+template <typename T>
+Array<T>&
+Array<T>::operator=(const Array &rhv)
 {
     if (this != &rhv) {
         n_data = rhv.n_data;
@@ -63,55 +128,65 @@ array<T>::operator=(const array& rhv)
 }
 
 template <typename T>
-void array<T>::push_back(const T& rhv)
+void Array<T>::push_back(const T& rhv)
 {
     n_data.push_back(rhv);
 }
 
 template <typename T>
-void array<T>::pop_back()
+void Array<T>::pop_back()
 {
     n_data.pop_back();
 }
 
 template <typename T>
-array<T>
-array<T>::operator()(arg_type begin, arg_type end, arg_type step) const
+const T&
+Array<T>::operator()(const std::vector<arg_type>& args) const
 {
-    assert(step != 0);
-    arg_type n = size();
-
-    if (end == 0) { end = n; }
-
-    if (begin < 0) { begin += n; }
-    if (end   < 0) { end   += n; }
-
-    if (begin < 0) { begin = 0; }
-    if (end   > n) { end = n; }
-
-    array<T> result;
-    if (step > 0) {
-        for (arg_type i = begin; i < end; i += step) {
-            result.n_data.push_back(n_data[i]);
-        }
-    } else {
-        for (arg_type i = begin; i > end; i += step) {
-            result.n_data.push_back(n_data[i]);
-        }
+    if (args.size() > n_dims.size()) {
+        throw std::invalid_argument("Arguments are out of dimention!");
     }
-    return result;
+
+    arg_type elem_count = n_data.size();
+
+    arg_type index = 0;
+    for (size_t x = 0; x < n_dims.size(); ++x) {
+        elem_count /= n_dims[x];
+        index += args[x] * elem_count;
+    }
+
+    return n_data[index];
+}
+
+template <typename T>
+T&
+Array<T>::operator()(const std::vector<arg_type>& args)
+{
+    if (args.size() > n_dims.size()) {
+        throw std::invalid_argument("Arguments are out of dimention!");
+    }
+
+    arg_type elem_count = n_data.size();
+
+    arg_type index = 0;
+    for (size_t x = 0; x < n_dims.size(); ++x) {
+        elem_count /= n_dims[x];
+        index += args[x] * elem_count;
+    }
+
+    return n_data[index];
 }
 
 // (cond, scalar, array)
 template <typename T>
 template <typename U>
-array<U> 
-array<T>::where(const array<bool>& condition,
+Array<U> 
+Array<T>::where(const Mask& condition,
                 const U& x,
-                const array<U>& y)
+                const Array<U>& y)
 {
     assert(condition.size() == y.size());
-    array<U> result;
+    Array<U> result;
     result.n_data.reserve(condition.size());
     for (arg_type i = 0; i < condition.size(); ++i) {
         result.n_data.push_back(condition[i] ? x : y[i]);
@@ -122,13 +197,13 @@ array<T>::where(const array<bool>& condition,
 // (cond, array, scalar)
 template <typename T>
 template <typename U>
-array<U> 
-array<T>::where(const array<bool>& condition,
-                const array<U>& x,
+Array<U> 
+Array<T>::where(const Mask& condition,
+                const Array<U>& x,
                 const U& y)
 {
     assert(condition.size() == x.size());
-    array<U> result;
+    Array<U> result;
     result.n_data.reserve(condition.size());
     for (arg_type i = 0; i < condition.size(); ++i) {
         result.n_data.push_back(condition[i] ? x[i] : y);
@@ -139,13 +214,13 @@ array<T>::where(const array<bool>& condition,
 // (cond, array, array)
 template <typename T>
 template <typename U>
-array<U> 
-array<T>::where(const array<bool>& condition,
-                const array<U>& x,
-                const array<U>& y)
+Array<U> 
+Array<T>::where(const Mask& condition,
+                const Array<U>& x,
+                const Array<U>& y)
 {
     assert(condition.size() == x.size() && x.size() == y.size());
-    array<U> result;
+    Array<U> result;
     result.n_data.reserve(condition.size());
     for (arg_type i = 0; i < condition.size(); ++i) {
         result.n_data.push_back(condition[i] ? x[i] : y[i]);
@@ -156,12 +231,12 @@ array<T>::where(const array<bool>& condition,
 // (cond, scalar, scalar)
 template <typename T>
 template <typename U>
-array<U> 
-array<T>::where(const array<bool>& condition,
+Array<U> 
+Array<T>::where(const Mask& condition,
                 const U& x,
                 const U& y)
 {
-    array<U> result;
+    Array<U> result;
     result.n_data.reserve(condition.size());
     for (arg_type i = 0; i < condition.size(); ++i) {
         result.n_data.push_back(condition[i] ? x : y);
@@ -172,7 +247,7 @@ array<T>::where(const array<bool>& condition,
 template <typename T>
 template <typename U>
 U 
-array<T>::dot(const array<U>& x, const array<U>& y)
+Array<T>::dot(const Array<U>& x, const Array<U>& y)
 {
     assert(x.size() == y.size());
     U res = 0;
@@ -181,11 +256,11 @@ array<T>::dot(const array<U>& x, const array<U>& y)
 }
 
 template <typename T>
-array<T>
-array<T>::clip(arg_type min_val, arg_type max_val) const
+Array<T>
+Array<T>::clip(arg_type min_val, arg_type max_val) const
 {
     assert(min <= max);
-    array<T> result;
+    Array<T> result;
     for (const auto& val : n_data) {
         if (val < min_val) result.push_back(min_val);
         else if (val > max_val) result.push_back(max_val);
@@ -195,10 +270,10 @@ array<T>::clip(arg_type min_val, arg_type max_val) const
 }
 
 template <typename T>
-array<T> 
-array<T>::unique() const
+Array<T> 
+Array<T>::unique() const
 {
-    array<T> result;
+    Array<T> result;
     std::unordered_set<T> seen;
 
     for (const auto& val : n_data) {
@@ -211,12 +286,12 @@ array<T>::unique() const
 }
 
 template <typename T>
-array<T> 
-array<T>::unique_sorted() const
+Array<T> 
+Array<T>::unique_sorted() const
 {
     std::vector<T> temp = n_data;
     std::sort(temp.begin(), temp.end());
-    array<T> result;
+    Array<T> result;
 
     if (!temp.empty()) {
         result.push_back(temp[0]);
@@ -229,10 +304,10 @@ array<T>::unique_sorted() const
 }
 
 template <typename T>
-array<typename array<T>::arg_type>
-array<T>::unique_indices() const
+Array<arg_type>
+Array<T>::unique_indices() const
 {
-    array<arg_type> indices;
+    Array<arg_type> indices;
     std::unordered_set<T> seen;
 
     for (arg_type i = 0; i < size(); ++i) {
@@ -245,15 +320,15 @@ array<T>::unique_indices() const
 }
 
 template <typename T>
-array<typename array<T>::arg_type>
-array<T>::unique_inverse() const
+Array<arg_type>
+Array<T>::unique_inverse() const
 {
-    array<T> u = unique(); 
+    Array<T> u = unique(); 
     std::unordered_map<T, arg_type> mapping;
     for (arg_type i = 0; i < u.size(); ++i)
         mapping[u[i]] = i;
 
-    array<arg_type> inverse;
+    Array<arg_type> inverse;
     for (const auto& val : n_data)
         inverse.push_back(mapping[val]);
 
@@ -261,15 +336,15 @@ array<T>::unique_inverse() const
 }
 
 template <typename T>
-array<typename array<T>::arg_type>
-array<T>::unique_counts() const
+Array<arg_type>
+Array<T>::unique_counts() const
 {
     std::unordered_map<T, arg_type> counts;
     for (const auto& val : n_data)
         counts[val]++;
 
-    array<T> u = unique(); 
-    array<arg_type> result;
+    Array<T> u = unique(); 
+    Array<arg_type> result;
     for (const auto& val : u)
         result.push_back(counts[val]);
 
@@ -277,10 +352,10 @@ array<T>::unique_counts() const
 }
 
 template <typename T>
-array<T>
-array<T>::sqrt() const
+Array<T>
+Array<T>::sqrt() const
 {
-    array<T> temp(n_data);
+    Array<T> temp(n_data);
     for (auto& val : temp.n_data) {
         val = static_cast<T>(std::sqrt(val));
     }
@@ -288,10 +363,10 @@ array<T>::sqrt() const
 }
 
 template <typename T>
-array<T> 
-array<T>::floor() const
+Array<T> 
+Array<T>::floor() const
 {
-    array<T> temp(n_data);
+    Array<T> temp(n_data);
     for (auto& val : temp.n_data) {
         val = static_cast<T>(std::floor(val));
     }
@@ -299,10 +374,10 @@ array<T>::floor() const
 }
 
 template <typename T>
-array<T> 
-array<T>::ceil() const
+Array<T> 
+Array<T>::ceil() const
 {
-    array<T> temp(n_data);
+    Array<T> temp(n_data);
     for (auto& val : temp.n_data) {
         val = static_cast<T>(std::ceil(val));
     }
@@ -310,10 +385,10 @@ array<T>::ceil() const
 }
 
 template <typename T>
-array<T> 
-array<T>::round() const
+Array<T> 
+Array<T>::round() const
 {
-    array<T> temp(n_data);
+    Array<T> temp(n_data);
     for (auto& val : temp.n_data) {
         val = static_cast<T>(std::round(val));
     }
@@ -322,7 +397,7 @@ array<T>::round() const
 
 template <typename T>
 T 
-array<T>::sum() const
+Array<T>::sum() const
 {
     T res = 0;
     for (const auto& val : n_data) {
@@ -334,7 +409,7 @@ array<T>::sum() const
 
 template <typename T>
 T 
-array<T>::prod() const
+Array<T>::prod() const
 {
     T res = 1;
     for (const auto& val : n_data) {
@@ -346,7 +421,7 @@ array<T>::prod() const
 
 template <typename T>
 T 
-array<T>::mean() const
+Array<T>::mean() const
 {
     assert(size() > 0);
     T sum = T();
@@ -358,7 +433,7 @@ array<T>::mean() const
 
 template <typename T>
 T 
-array<T>::var() const
+Array<T>::var() const
 {
     assert(size() > 0);
     const T m = mean();
@@ -372,14 +447,14 @@ array<T>::var() const
 
 template <typename T>
 T 
-array<T>::std() const
+Array<T>::std() const
 {
     return static_cast<T>(std::sqrt(var()));
 }
 
 template <typename T>
 T 
-array<T>::min() const
+Array<T>::min() const
 {
     assert(!n_data.empty());
     return *std::min_element(n_data.begin(), n_data.end());
@@ -387,79 +462,83 @@ array<T>::min() const
 
 template <typename T>
 T 
-array<T>::max() const
+Array<T>::max() const
 {
     assert(!n_data.empty());
     return *std::max_element(n_data.begin(), n_data.end());
 }
 
 template <typename T>
-typename array<T>::arg_type
-array<T>::argmin() const
+arg_type
+Array<T>::argmin() const
 {
     assert(!n_data.empty());
     return std::distance(n_data.begin(), std::min_element(n_data.begin(), n_data.end()));
 }
 
 template <typename T>
-typename array<T>::arg_type
-array<T>::argmax() const
+arg_type
+Array<T>::argmax() const
 {
     assert(!n_data.empty());
     return std::distance(n_data.begin(), std::max_element(n_data.begin(), n_data.end()));
 }
 
 template <typename T>
-array<T>
-array<T>::operator+(const array<T>& rhv) const
+Array<T>
+Array<T>::operator+(const Array<T>& rhv) const
 {
     Broadcast flag = can_broadcast(*this, rhv);
-    if (flag == Broadcast::FIRST) { return calculate(broadcast(*this, rhv.n_dims), rhv,   Sign::SUM); }
+    if (flag == Broadcast::FIRST) { return calculate(broadcast(*this, rhv.n_dims),   rhv, Sign::SUM); }
     else if (flag == Broadcast::SECOND) { return calculate(broadcast(rhv, n_dims), *this, Sign::SUM); }
-
-    return array<T>();
+    else if (flag == Broadcast::NONE)   { return calculate(                   *this, rhv, Sign::SUM); }
+  
+    return Array<T>();
 }
 
 template <typename T>
-array<T> 
-array<T>::operator-(const array<T>& rhv) const
+Array<T> 
+Array<T>::operator-(const Array<T>& rhv) const
 {
     Broadcast flag = can_broadcast(*this, rhv);
     if (flag == Broadcast::FIRST) { return calculate(broadcast(*this, rhv.n_dims), rhv,   Sign::SUBTRACT); }
     else if (flag == Broadcast::SECOND) { return calculate(broadcast(rhv, n_dims), *this, Sign::SUBTRACT); }
+    else if (flag == Broadcast::NONE)   { return calculate(                   *this, rhv, Sign::SUBTRACT); }
 
-    return array<T>();
+    return Array<T>();
 }
 
 template <typename T>
-array<T> 
-array<T>::operator*(const array<T>& rhv) const
+Array<T> 
+Array<T>::operator*(const Array<T>& rhv) const
 {
     Broadcast flag = can_broadcast(*this, rhv);
     if (flag == Broadcast::FIRST) { return calculate(broadcast(*this, rhv.n_dims), rhv,   Sign::MULTIPLY); }
     else if (flag == Broadcast::SECOND) { return calculate(broadcast(rhv, n_dims), *this, Sign::MULTIPLY); }
+    else if (flag == Broadcast::NONE)   { return calculate(                   *this, rhv, Sign::MULTIPLY); }
 
-    return array<T>();
+    return Array<T>();
 }
 
 template <typename T>
-array<T> 
-array<T>::operator/(const array<T>& rhv) const
+Array<T> 
+Array<T>::operator/(const Array<T>& rhv) const
 {
     Broadcast flag = can_broadcast(*this, rhv);
     if (flag == Broadcast::FIRST) { return calculate(broadcast(*this, rhv.n_dims), rhv,   Sign::DIVIDE); }
     else if (flag == Broadcast::SECOND) { return calculate(broadcast(rhv, n_dims), *this, Sign::DIVIDE); }
+    else if (flag == Broadcast::NONE)   { return calculate(                   *this, rhv, Sign::DIVIDE); }
 
-    return array<T>();
+    return Array<T>();
 }
 
 // Comparison operators
 
 template <typename T>
-array<bool> 
-array<T>::operator>(const array<T>& rhv) const {
+Mask 
+Array<T>::operator>(const Array<T>& rhv) const {
     assert(size() == rhv.size());
-    array<bool> result(size());
+    Mask result(size());
     for (arg_type i = 0; i < size(); ++i) {
         result[i] = n_data[i] > rhv.n_data[i];
     }
@@ -467,10 +546,10 @@ array<T>::operator>(const array<T>& rhv) const {
 }
 
 template <typename T>
-array<bool> 
-array<T>::operator<(const array<T>& rhv) const {
+Mask 
+Array<T>::operator<(const Array<T>& rhv) const {
     assert(size() == rhv.size());
-    array<bool> result(size());
+    Mask result(size());
     for (arg_type i = 0; i < size(); ++i) {
         result[i] = n_data[i] < rhv.n_data[i];
     }
@@ -478,10 +557,10 @@ array<T>::operator<(const array<T>& rhv) const {
 }
 
 template <typename T>
-array<bool> 
-array<T>::operator>=(const array<T>& rhv) const {
+Mask 
+Array<T>::operator>=(const Array<T>& rhv) const {
     assert(size() == rhv.size());
-    array<bool> result(size());
+    Mask result(size());
     for (arg_type i = 0; i < size(); ++i) {
         result[i] = n_data[i] >= rhv.n_data[i];
     }
@@ -489,10 +568,10 @@ array<T>::operator>=(const array<T>& rhv) const {
 }
 
 template <typename T>
-array<bool> 
-array<T>::operator<=(const array<T>& rhv) const {
+Mask 
+Array<T>::operator<=(const Array<T>& rhv) const {
     assert(size() == rhv.size());
-    array<bool> result(size());
+    Mask result(size());
     for (arg_type i = 0; i < size(); ++i) {
         result[i] = n_data[i] <= rhv.n_data[i];
     }
@@ -500,10 +579,10 @@ array<T>::operator<=(const array<T>& rhv) const {
 }
 
 template <typename T>
-array<bool> 
-array<T>::operator==(const array<T>& rhv) const {
+Mask 
+Array<T>::operator==(const Array<T>& rhv) const {
     assert(size() == rhv.size());
-    array<bool> result(size());
+    Mask result(size());
     for (arg_type i = 0; i < size(); ++i) {
         result[i] = n_data[i] == rhv.n_data[i];
     }
@@ -511,10 +590,10 @@ array<T>::operator==(const array<T>& rhv) const {
 }
 
 template <typename T>
-array<bool> 
-array<T>::operator!=(const array<T>& rhv) const {
+Mask 
+Array<T>::operator!=(const Array<T>& rhv) const {
     assert(size() == rhv.size());
-    array<bool> result(size());
+    Mask result(size());
     for (arg_type i = 0; i < size(); ++i) {
         result[i] = n_data[i] != rhv.n_data[i];
     }
@@ -524,9 +603,9 @@ array<T>::operator!=(const array<T>& rhv) const {
 // Compare by value
 
 template <typename T>
-array<bool> 
-array<T>::operator>(const T& rhv) const {
-    array<bool> result(size());
+Mask 
+Array<T>::operator>(const T& rhv) const {
+    Mask result(size());
     for (arg_type i = 0; i < size(); ++i) {
         result[i] = n_data[i] > rhv;
     }
@@ -534,9 +613,9 @@ array<T>::operator>(const T& rhv) const {
 }
 
 template <typename T>
-array<bool> 
-array<T>::operator<(const T& rhv) const {
-    array<bool> result(size());
+Mask 
+Array<T>::operator<(const T& rhv) const {
+    Mask result(size());
     for (arg_type i = 0; i < size(); ++i) {
         result[i] = n_data[i] < rhv;
     }
@@ -544,9 +623,9 @@ array<T>::operator<(const T& rhv) const {
 }
 
 template <typename T>
-array<bool> 
-array<T>::operator>=(const T& rhv) const {
-    array<bool> result(size());
+Mask 
+Array<T>::operator>=(const T& rhv) const {
+    Mask result(size());
     for (arg_type i = 0; i < size(); ++i) {
         result[i] = n_data[i] >= rhv;
     }
@@ -554,9 +633,9 @@ array<T>::operator>=(const T& rhv) const {
 }
 
 template <typename T>
-array<bool> 
-array<T>::operator<=(const T& rhv) const {
-    array<bool> result(size());
+Mask 
+Array<T>::operator<=(const T& rhv) const {
+    Mask result(size());
     for (arg_type i = 0; i < size(); ++i) {
         result[i] = n_data[i] <= rhv;
     }
@@ -564,9 +643,9 @@ array<T>::operator<=(const T& rhv) const {
 }
 
 template <typename T>
-array<bool> 
-array<T>::operator==(const T& rhv) const {
-    array<bool> result(size());
+Mask 
+Array<T>::operator==(const T& rhv) const {
+    Mask result(size());
     for (arg_type i = 0; i < size(); ++i) {
         result[i] = n_data[i] == rhv;
     }
@@ -574,9 +653,9 @@ array<T>::operator==(const T& rhv) const {
 }
 
 template <typename T>
-array<bool> 
-array<T>::operator!=(const T& rhv) const {
-    array<bool> result(size());
+Mask 
+Array<T>::operator!=(const T& rhv) const {
+    Mask result(size());
     for (arg_type i = 0; i < size(); ++i) {
         result[i] = n_data[i] != rhv;
     }
@@ -590,7 +669,7 @@ array<T>::operator!=(const T& rhv) const {
 template <typename T>
 template <typename U>
 typename std::enable_if<!std::is_same<U, bool>::value, const U&>::type
-array<T>::operator[](arg_type index) const
+Array<T>::operator[](arg_type index) const
 {
     assert((index >= 0 && index < size()) ||
            (index < 0 && std::abs(index) <= size()));
@@ -602,7 +681,7 @@ array<T>::operator[](arg_type index) const
 template <typename T>
 template <typename U>
 typename std::enable_if<!std::is_same<U, bool>::value, U&>::type
-array<T>::operator[](arg_type index)
+Array<T>::operator[](arg_type index)
 {
     assert((index >= 0 && index < size()) ||
            (index < 0 && std::abs(index) <= size()));
@@ -613,7 +692,7 @@ array<T>::operator[](arg_type index)
 template <typename T>
 template <typename U>
 typename std::enable_if<std::is_same<U, bool>::value, bool>::type
-array<T>::operator[](arg_type index) const
+Array<T>::operator[](arg_type index) const
 {
     assert((index >= 0 && index < size()) ||
            (index < 0 && std::abs(index) <= size()));
@@ -624,7 +703,7 @@ array<T>::operator[](arg_type index) const
 template <typename T>
 template <typename U>
 typename std::enable_if<std::is_same<U, bool>::value, typename std::vector<bool>::reference>::type
-array<T>::operator[](arg_type index)
+Array<T>::operator[](arg_type index)
 {
     assert((index >= 0 && index < size()) ||
            (index < 0 && std::abs(index) <= size()));
@@ -632,11 +711,11 @@ array<T>::operator[](arg_type index)
 }
 
 template <typename T>
-array<T> 
-array<T>::operator[](const array<bool>& rhv) const
+Array<T> 
+Array<T>::operator[](const Mask& rhv) const
 {
     assert(size() == rhv.size());
-    array<T> res;
+    Array<T> res;
     for (arg_type i = 0; i < size(); ++i) {
         if (rhv[i]) { res.push_back(n_data[i]); }
     }
@@ -645,11 +724,11 @@ array<T>::operator[](const array<bool>& rhv) const
 }
 
 template <typename T>
-array<T> 
-array<T>::operator[](const std::vector<bool>& rhv) const
+Array<T> 
+Array<T>::operator[](const std::vector<bool>& rhv) const
 {
     assert(size() == static_cast<T>(rhv.size()));
-    array<T> res;
+    Array<T> res;
     for (arg_type i = 0; i < size(); ++i) {
         if (rhv[i]) { res.push_back(n_data[i]); }
     }
@@ -658,20 +737,20 @@ array<T>::operator[](const std::vector<bool>& rhv) const
 }
 
 template <typename T>
-typename array<T>::arg_type
-array<T>::size() const
+arg_type
+Array<T>::size() const
 { 
     return n_data.size(); 
 }
 
 template <typename T>
-const std::vector<typename array<T>::arg_type> &array<T>::shape() const
+const std::vector<arg_type> &Array<T>::shape() const
 {
     return n_dims;
 }
 
 template <typename T>
-void array<T>::print_data() const
+void Array<T>::print_data() const
 {
     for (const auto& val : n_data) { std::cout << val << " "; }
     std::cout << std::endl;
@@ -679,7 +758,7 @@ void array<T>::print_data() const
 
 template <typename T>
 void 
-array<T>::print_dims() const
+Array<T>::print_dims() const
 {
     for (auto& in : n_dims) {
         std::cout << in << ' ';
@@ -688,8 +767,8 @@ array<T>::print_dims() const
 }
 
 template <typename T>
-typename array<T>::Broadcast
-array<T>::can_broadcast(const array<T>& first, const array<T>& second)
+typename Array<T>::Broadcast
+Array<T>::can_broadcast(const Array<T>& first, const Array<T>& second)
 {
     const std::vector<arg_type>& s1 = first.n_dims;
     const std::vector<arg_type>& s2 = second.n_dims;
@@ -724,8 +803,8 @@ array<T>::can_broadcast(const array<T>& first, const array<T>& second)
 }
 
 template <typename T>
-array<T>
-array<T>::broadcast(const array<T>& arr, const std::vector<arg_type>& dims)
+Array<T>
+Array<T>::broadcast(const Array<T>& arr, const std::vector<arg_type>& dims)
 {
     // arr has shape arr.n_dims, we want to broadcast to dims
     assert(dims.size() >= arr.n_dims.size());
@@ -737,7 +816,7 @@ array<T>::broadcast(const array<T>& arr, const std::vector<arg_type>& dims)
         assert(a == b || a == 1); // broadcast rule
     }
 
-    array<T> result;
+    Array<T> result;
     result.n_dims = dims;
 
     // compute total size
@@ -772,12 +851,12 @@ array<T>::broadcast(const array<T>& arr, const std::vector<arg_type>& dims)
 
 
 template <typename T>
-array<T> 
-array<T>::calculate(const array<T>& first, const array<T>& second, Sign sign)
+Array<T> 
+Array<T>::calculate(const Array<T>& first, const Array<T>& second, Sign sign)
 {
     assert(first.size() == second.size());
 
-    array<T> result(first.size());
+    Array<T> result(first.size());
     result.n_dims = first.n_dims;
     for (arg_type i = 0; i < result.size(); ++i) {
         switch (sign)
@@ -793,10 +872,10 @@ array<T>::calculate(const array<T>& first, const array<T>& second, Sign sign)
 
 template <typename T>
 template <typename U>
-array<U>
-array<T>::cast() const
+Array<U>
+Array<T>::cast() const
 {
-    array<U> result;
+    Array<U> result;
     for (const auto& val : n_data) {
         result.push_back(static_cast<U>(val));
     }
@@ -805,32 +884,32 @@ array<T>::cast() const
 
 // Global Functions
 
-array<bool> 
-logical_and(const array<bool>& x, const array<bool>& y)
+Mask 
+logical_and(const Mask& x, const Mask& y)
 {
     assert(x.size() == y.size());
-    array<bool> res;
+    Mask res;
     for (auto i = 0; i < x.size(); ++i) {
         res.push_back(x[i] && y[i]);
     }
     return res;
 }
 
-array<bool> 
-logical_or(const array<bool>& x, const array<bool>& y)
+Mask 
+logical_or(const Mask& x, const Mask& y)
 {
     assert(x.size() == y.size());
-    array<bool> res;
+    Mask res;
     for (auto i = 0; i < x.size(); ++i) {
         res.push_back(x[i] || y[i]);
     }
     return res;
 }
 
-array<bool> 
-logical_not(const array<bool>& arr)
+Mask 
+logical_not(const Mask& arr)
 {
-    array<bool> res;
+    Mask res;
     for (auto i = 0; i < arr.size(); ++i) {
         res.push_back(!arr[i]);
     }
