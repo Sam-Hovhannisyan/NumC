@@ -177,6 +177,46 @@ Array<T>::operator()(const std::vector<arg_type>& args)
     return n_data[index];
 }
 
+template <typename T>
+template <typename U>
+U 
+Array<T>::det(const Array<U>& arr)
+{
+    if (arr.n_dims.size() != 2 || arr.n_dims[0] != arr.n_dims[1]) {
+        throw std::invalid_argument("Determinant cannot be calculated.");
+    }
+    auto mat = arr;
+    double det = 1.0;
+    auto n = arr.n_dims[0];
+    for (arg_type i = 0; i < n; ++i) {
+        // Pivot
+        arg_type pivot = i;
+        for (arg_type j = i + 1; j < n; ++j) {
+            if (fabs(mat[j * n + i]) > fabs(mat[pivot * n + i])) pivot = j;
+        }
+        if (fabs(mat[pivot * n + i]) < 1e-12) return 0.0; // singular
+        
+        if (pivot != i) {
+            for (arg_type k = 0; k < n; ++k) {
+                std::swap(mat[i * n + k], mat[pivot * n + k]);
+            }
+            det = -det; // row swap flips sign
+        }
+        
+        det *= mat[i * n + i];
+        
+        // Eliminate
+        for (arg_type j = i + 1; j < n; ++j) {
+            double factor = static_cast<double>(mat[j * n + i]) / mat[i * n + i];
+            for (arg_type k = i; k < n; ++k) {
+                mat[j * n + k] -= factor * mat[i * n + k];
+            }
+        }
+    }
+
+    return static_cast<U>(det);
+}
+
 // (cond, scalar, array)
 template <typename T>
 template <typename U>
@@ -249,7 +289,9 @@ template <typename U>
 U 
 Array<T>::dot(const Array<U>& x, const Array<U>& y)
 {
-    assert(x.size() == y.size());
+    if(x.n_dims.size() != y.n_dims.size() && x.size() != y.size()) {
+        throw std::invalid_argument("Invalid input for dot product.");
+    }
     U res = 0;
     for (arg_type i = 0; i < x.size(); ++i) { res += (x[i] * y[i]); }
     return res;

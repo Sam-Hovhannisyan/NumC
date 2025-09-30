@@ -46,26 +46,29 @@ public:
     Array<T> ceil() const;
     Array<T> round() const;
 
+    template <typename U>
+    static U det(const Array<U>& arr);
+
     // Inside class Array<T>
     template <typename U>
     static Array<U> where(const Mask& condition,
-                        const U& x,
-                        const Array<U>& y);
+                          const U& x,
+                          const Array<U>& y);
 
     template <typename U>
     static Array<U> where(const Mask& condition,
-                        const Array<U>& x,
-                        const U& y);
+                          const Array<U>& x,
+                          const U& y);
 
     template <typename U>
     static Array<U> where(const Mask& condition,
-                        const Array<U>& x,
-                        const Array<U>& y);
+                          const Array<U>& x,
+                          const Array<U>& y);
 
     template <typename U>
     static Array<U> where(const Mask& condition,
-                        const U& x,
-                        const U& y);
+                          const U& x,
+                          const U& y);
 
     template <typename U>
     static U dot(const Array<U>& x, const Array<U>& y);

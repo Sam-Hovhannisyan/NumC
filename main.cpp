@@ -53,7 +53,9 @@ int main()
 
     Array<int>::where(c > 0, 0, c).print_data();
 
-    auto test = make_array({{{1}, {2}}, {{2}, {3}}, {{3}, {4}}});
+    auto test = make_array({{{1}, {2}}, 
+                            {{2}, {3}}, 
+                            {{3}, {4}}});
     test.print_data();
     test.print_dims();
 
@@ -65,6 +67,12 @@ int main()
     Array<int> e2 = make_array({{10,20,30}, 
                                 {40,50,60}, 
                                 {70,80,90}});
+    
+    Array<double> e4 = make_array({{10.0,20.0,30.0}, 
+                                   {40.0,50.0,60.0}, 
+                                   {70.0,80.0,90.0}});
+
+    std::cout << "Determinant: " << Array<int>::det(e2) << std::endl;
 
     e1.print_data();
     e2.print_data();
@@ -75,7 +83,7 @@ int main()
     sum.print_data();
     sub.print_data();
 
-    e2({Slice(0, 2), Slice(0, 2)}) = {100, 200, 400, 500};
+    e2({{0, 2}, {0, 2}}) = {100, 200, 400, 500};
     auto e3 = e2({Slice(0, 2), Slice(0, 2)});
     e2.print_data();
 
