@@ -4,6 +4,7 @@
 #include "./Mask.hpp"
 #include "./Viewer.hpp"
 #include "./random.hpp"
+#include "./global_methods.hpp"
 #include <vector>
 #include <cstdlib>
 #include <stdexcept>
@@ -16,6 +17,8 @@ class Array
 {
 public:
 friend struct Viewer<T>;
+template <typename U>
+friend U Global::Math::det(const Array<U>& arr);
 
 struct Slice 
 {
@@ -79,14 +82,6 @@ public:
     Array<arg_type> unique_indices() const;
     Array<arg_type> unique_inverse() const;
     Array<arg_type> unique_counts() const;
-
-    Array<T> sqrt() const;
-    Array<T> floor() const;
-    Array<T> ceil() const;
-    Array<T> round() const;
-
-    template <typename U>
-    static U det(const Array<U>& arr);
 
     // Inside class Array<T>
     template <typename U>
@@ -208,6 +203,6 @@ inline Mask logical_not(const Mask& arr);
 
 }
 
-#include "../templates/Array.cpp"
+#include "../templates/Array.ipp"
 #include "./make_array.hpp"
 #include "./Slice_impl.hpp"

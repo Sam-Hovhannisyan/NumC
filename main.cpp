@@ -23,15 +23,15 @@ int main()
 
     Array<int> temp1(std::vector<int>({1, 4, 9, 16, 25, 36, 49, 64, 81}));
     temp1.print_data();
-    temp1 = temp1.sqrt();
+    temp1 = Global::Math::sqrt(temp1);
     temp1.print_data();
 
     std::cout << "------------------------" << std::endl;
     Array<double> arr({2.3, 53.8, 7.1, 25.5, 8.4, 5.6});
     arr.print_data();
-    arr.ceil().print_data();
-    arr.floor().print_data();
-    arr.round().print_data();
+    Global::Math::ceil(arr).print_data();
+    Global::Math::floor(arr).print_data();
+    Global::Math::round(arr).print_data();
     std::cout << "------------------------" << std::endl;
 
     Array<int> arr2 = {5, 2, 9, 1, 7};
@@ -75,7 +75,9 @@ int main()
                                    {40.0,50.0,60.0}, 
                                    {70.0,80.0,90.0}});
 
-    std::cout << "Determinant: " << Array<int>::det(e2) << std::endl;
+    std::cout << "Determinant: " << Global::Math::det(e2) << std::endl;
+
+    Global::Math::log10(e4).print_data();
 
     e1.print_data();
     e2.print_data();
@@ -104,6 +106,9 @@ int main()
     auto random = Random::random({3, 3});
     random.print_data();
     random.print_dims();
+
+    Array<double> lt = {1, EulerConstant, Global::Math::exp(2.5), Global::Math::exp<double>(3)};
+    Global::Math::log(lt).print_data();
 
     return 0;
 }

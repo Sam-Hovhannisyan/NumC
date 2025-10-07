@@ -43,4 +43,4 @@ struct Viewer
 };
 }
 
-#include "../templates/Viewer.cpp"
+#include "../templates/Viewer.ipp"

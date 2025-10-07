@@ -1,4 +1,3 @@
-#include "../headers/Viewer.hpp"
 #include <cassert>
 #include <iostream>
 #include <limits>
