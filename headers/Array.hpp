@@ -1,19 +1,57 @@
 #pragma once
 
 #include "./numc_types.hpp"
-#include "./Slice.hpp"
 #include "./Mask.hpp"
 #include "./Viewer.hpp"
+#include "./random.hpp"
 #include <vector>
 #include <cstdlib>
 #include <stdexcept>
 
-namespace SamH::numc
+namespace SamH::NumC
 {
 
 template <typename T>
 class Array 
 {
+public:
+friend struct Viewer<T>;
+
+struct Slice 
+{
+public:
+    Slice(arg_type begin, arg_type end, arg_type step = 1);
+
+    void normalize(arg_type array_len); 
+
+    arg_type operator[](arg_type idx) const;
+
+    arg_type size() const;
+
+private:
+    arg_type valid_step(arg_type step) const;
+
+private:
+    arg_type s_begin;
+    arg_type s_end;
+    arg_type s_step;
+};
+
+public:
+    using iterator = typename std::vector<T>::iterator;
+    using const_iterator = typename std::vector<T>::const_iterator;
+
+    // Begin / End for non-const Array
+    iterator begin() { return n_data.begin(); }
+    iterator end()   { return n_data.end(); }
+
+    // Begin / End for const Array
+    const_iterator begin() const { return n_data.begin(); }
+    const_iterator end()   const { return n_data.end(); }
+
+    const_iterator cbegin() const { return n_data.cbegin(); }
+    const_iterator cend()   const { return n_data.cend(); }
+
 public:
     Array(arg_type size = 0, const T& elem = T());
     Array(const T* arr, const arg_type len);
@@ -21,19 +59,20 @@ public:
     Array(const T* from, const T* to);
     Array(const Array& rhv);
     Array(const std::initializer_list<T>& init);
-    Array(const Viewer<T>& view);
+    inline Array(const Viewer<T>& view);
     
     Array& operator=(const Array& rhv);
     
     void push_back(const T& rhv);
     void pop_back();
     
-    const T& operator()(const std::vector<arg_type>& args) const;
-    T& operator()(const std::vector<arg_type>& args);
+    const T& get_value(const std::vector<arg_type>& args) const;
+    T& get_value(const std::vector<arg_type>& args);
     Viewer<T> operator()(const std::vector<Slice>& slices);
     Array<T>  operator()(const std::vector<Slice>& slices) const;
 
     Array<T> clip(arg_type min_val, arg_type max_val) const;
+    void reshape(const std::vector<arg_type>& new_shape);
     
     Array<T> unique() const;
     Array<T> unique_sorted() const;
@@ -154,21 +193,21 @@ private:
     template <typename U, typename List>
     friend Array<U> make_array_impl(const List& init);
 
-    static Broadcast can_broadcast(const Array<T>& first, const Array<T>& second);
-    static Array<T> broadcast(const Array<T>& arr, const std::vector<arg_type>& dims);
-    static Array<T> calculate(const Array<T>& first, const Array<T>& second, Sign sign);
+    inline static Broadcast can_broadcast(const Array<T>& first, const Array<T>& second);
+    inline static Array<T> broadcast(const Array<T>& arr, const std::vector<arg_type>& dims);
+    inline static Array<T> calculate(const Array<T>& first, const Array<T>& second, Sign sign);
 
 private:
     std::vector<T> n_data;
     std::vector<arg_type> n_dims;
 };
 
-Mask logical_and(const Mask& x, const Mask& y);
-Mask logical_or (const Mask& x, const Mask& y);
-Mask logical_not(const Mask& arr);
+inline Mask logical_and(const Mask& x, const Mask& y);
+inline Mask logical_or (const Mask& x, const Mask& y);
+inline Mask logical_not(const Mask& arr);
 
 }
 
 #include "../templates/Array.cpp"
 #include "./make_array.hpp"
-
+#include "./Slice_impl.hpp"

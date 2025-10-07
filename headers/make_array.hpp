@@ -2,7 +2,7 @@
 
 #include "./Array.hpp"
 
-namespace SamH::numc 
+namespace SamH::NumC 
 {
 
 // ----------------- Type alias -----------------

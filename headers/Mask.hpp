@@ -3,7 +3,7 @@
 #include "./numc_types.hpp"
 #include <vector>
 
-namespace SamH::numc
+namespace SamH::NumC
 {
 
 struct Mask 

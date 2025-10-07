@@ -6,7 +6,7 @@ It provides simple array and matrix operations with a familiar interface.
 ---
 
 ## ✨ Features
-- Multi-dimensional array support (`array<T>`)
+- Multi-dimensional array support (`Array<T>`)
 - Broadcasting functionality
 - Element-wise operations
 - Easy initialization from lists
@@ -27,9 +27,9 @@ To create multidimentional array use make_array() function, but for one dimentio
 
 ```bash c++
 # One dimentional array example
-array<int> arr = {5, 2, 9, 1, 7};
+Array<int> arr = {5, 2, 9, 1, 7};
 # Multi dimentional array example
-array<int> multi__arr = make_array({{10, 20, 30}, {40, 50, 60}, {40, 50, 60}});
+Array<int> multi_arr = make_array({{10, 20, 30}, {40, 50, 60}, {40, 50, 60}});
 
 # To pring array's data use print_data()
 arr.print_data();

@@ -1,23 +1,24 @@
 #include <iostream>
 #include "./headers/Array.hpp"
 
-using namespace SamH::numc;
+using namespace SamH::NumC;
 
 int main()
 {
     std::vector<int> v = {1, 2, 3, 4, 5, 6, 7};
     Array<int> numpy(v);
     Array<int> testSize(5);
-    Array<int> sliced1 = numpy({Slice(1, 3)});
-    Array<int> sliced2 = numpy({Slice(2, 4)});
+    Array<int> sliced1 = numpy({{1, 3}});
+    Array<int> sliced2 = numpy({{2, 4}});
     Array<int> result = sliced1 + sliced2;
-    Array<int> sliced3 = numpy({Slice(-1, -4, -1)});
+    Array<int> sliced3 = numpy({{-1, -4, -1}});
     testSize[4] = 5;
     testSize[-2] = 4;
     testSize.print_data();
     std::cout << "------------------------" << std::endl;
     sliced1.print_data();
     sliced2.print_data();
+    result.print_data();
     sliced3.print_data();
 
     Array<int> temp1(std::vector<int>({1, 4, 9, 16, 25, 36, 49, 64, 81}));
@@ -25,19 +26,21 @@ int main()
     temp1 = temp1.sqrt();
     temp1.print_data();
 
-    // array<double> arr({2.3, 53.8, 7.1, 25.5, 8.4, 5.6});
-    // arr.printData();
-    // arr.ceil().printData();
-    // arr.floor().printData();
-    // arr.round().printData();
+    std::cout << "------------------------" << std::endl;
+    Array<double> arr({2.3, 53.8, 7.1, 25.5, 8.4, 5.6});
+    arr.print_data();
+    arr.ceil().print_data();
+    arr.floor().print_data();
+    arr.round().print_data();
+    std::cout << "------------------------" << std::endl;
 
-    Array<int> arr = {5, 2, 9, 1, 7};
-    arr.print_dims();
+    Array<int> arr2 = {5, 2, 9, 1, 7};
+    arr2.print_dims();
 
-    std::cout << "Min: " << arr.min() << "\n";      
-    std::cout << "Max: " << arr.max() << "\n";      
-    std::cout << "Argmin: " << arr.argmin() << "\n";
-    std::cout << "Argmax: " << arr.argmax() << "\n";
+    std::cout << "Min: " << arr2.min() << "\n";      
+    std::cout << "Max: " << arr2.max() << "\n";      
+    std::cout << "Argmin: " << arr2.argmin() << "\n";
+    std::cout << "Argmax: " << arr2.argmax() << "\n";
 
     Array<int> a({1, 3, 0});
     Array<int> b({0, 3, 2});
@@ -80,12 +83,27 @@ int main()
     auto sum = e1 + e2;
     auto sub = e1 - e2;
 
+    auto rs = e1({{0, 2}}) + e2({{0, 2}, {0, 2}});
+    rs.print_data();
+
     sum.print_data();
     sub.print_data();
 
     e2({{0, 2}, {0, 2}}) = {100, 200, 400, 500};
-    auto e3 = e2({Slice(0, 2), Slice(0, 2)});
+    auto e3 = e2({{0, 2}, {0, 2}});
     e2.print_data();
+
+    Array<int> e5 = {1, 2, 3, 4, 5, 6, 7, 8};
+    e5.reshape({2, 4});
+    e5.print_dims();
+
+    Array<int> randint = Random::randint({0}, {10}, {10}, true);
+    randint.print_data();
+    randint.print_dims();
+
+    auto random = Random::random({3, 3});
+    random.print_data();
+    random.print_dims();
 
     return 0;
 }

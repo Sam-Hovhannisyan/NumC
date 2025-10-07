@@ -2,7 +2,7 @@
 
 #include <cstdint>
 
-namespace SamH::numc {
+namespace SamH::NumC {
     using arg_type = int64_t;  
 }
 

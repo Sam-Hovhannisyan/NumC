@@ -6,7 +6,7 @@
 #include <unordered_set>
 #include <type_traits>
 
-namespace SamH::numc
+namespace SamH::NumC
 {
 
 template <typename T>
@@ -72,7 +72,7 @@ Array<T>::Array(const Viewer<T>& view)
 
     this->n_data.reserve(total_size);
 
-    std::vector<arg_type> coords(n_dims.size(), 0);
+    std::vector<arg_type> coords(view.views.size(), 0);
     for (arg_type i = 0; i < total_size; ++i) {
         this->n_data.push_back(view(coords));
 
@@ -90,8 +90,7 @@ Array<T>::Array(const Viewer<T>& view)
 template <typename T>
 Viewer<T>
 Array<T>::operator()(const std::vector<Slice>& slices) {
-    Viewer<T> view(n_data.data(), n_data.data() + n_data.size(), 
-                   n_dims.data(), n_dims.data() + n_dims.size());
+    Viewer<T> view(n_data.data(), n_data.data() + n_data.size(), n_dims);
     for (std::size_t d = 0; d < slices.size(); ++d) {
         Slice s = slices[d];
         s.normalize(n_dims[d]);   // adjust negatives relative to this dimension
@@ -105,9 +104,7 @@ template <typename T>
 Array<T> 
 Array<T>::operator()(const std::vector<Slice>& slices) const {
     Viewer<T> view(const_cast<T*>(n_data.data()), 
-                   const_cast<T*>(n_data.data() + n_data.size()), 
-                   const_cast<arg_type*>(n_dims.data()), 
-                   const_cast<arg_type*>(n_dims.data() + n_dims.size()));
+                   const_cast<T*>(n_data.data() + n_data.size()), n_dims);
     for (std::size_t d = 0; d < slices.size(); ++d) {
         Slice s = slices[d];
         s.normalize(n_dims[d]);   // adjust negatives relative to this dimension
@@ -141,7 +138,7 @@ void Array<T>::pop_back()
 
 template <typename T>
 const T&
-Array<T>::operator()(const std::vector<arg_type>& args) const
+Array<T>::get_value(const std::vector<arg_type>& args) const
 {
     if (args.size() > n_dims.size()) {
         throw std::invalid_argument("Arguments are out of dimention!");
@@ -160,7 +157,7 @@ Array<T>::operator()(const std::vector<arg_type>& args) const
 
 template <typename T>
 T&
-Array<T>::operator()(const std::vector<arg_type>& args)
+Array<T>::get_value(const std::vector<arg_type>& args)
 {
     if (args.size() > n_dims.size()) {
         throw std::invalid_argument("Arguments are out of dimention!");
@@ -312,7 +309,18 @@ Array<T>::clip(arg_type min_val, arg_type max_val) const
 }
 
 template <typename T>
-Array<T> 
+void Array<T>::reshape(const std::vector<arg_type>& new_shape)
+{
+    arg_type sum1 = 1, sum2 = 1;
+    for (auto& i : new_shape) sum1 *= i;
+    for (auto& i : n_dims) sum2 *= i;
+
+    if (sum1 != sum2) throw std::invalid_argument("Invalid shape size."); 
+    n_dims = new_shape;
+}
+
+template <typename T>
+Array<T>
 Array<T>::unique() const
 {
     Array<T> result;
@@ -385,7 +393,7 @@ Array<T>::unique_counts() const
     for (const auto& val : n_data)
         counts[val]++;
 
-    Array<T> u = unique(); 
+    const Array<T> u = unique(); 
     Array<arg_type> result;
     for (const auto& val : u)
         result.push_back(counts[val]);
@@ -530,7 +538,7 @@ template <typename T>
 Array<T>
 Array<T>::operator+(const Array<T>& rhv) const
 {
-    Broadcast flag = can_broadcast(*this, rhv);
+    const Broadcast flag = can_broadcast(*this, rhv);
     if (flag == Broadcast::FIRST) { return calculate(broadcast(*this, rhv.n_dims),   rhv, Sign::SUM); }
     else if (flag == Broadcast::SECOND) { return calculate(broadcast(rhv, n_dims), *this, Sign::SUM); }
     else if (flag == Broadcast::NONE)   { return calculate(                   *this, rhv, Sign::SUM); }
@@ -542,7 +550,7 @@ template <typename T>
 Array<T> 
 Array<T>::operator-(const Array<T>& rhv) const
 {
-    Broadcast flag = can_broadcast(*this, rhv);
+    const Broadcast flag = can_broadcast(*this, rhv);
     if (flag == Broadcast::FIRST) { return calculate(broadcast(*this, rhv.n_dims), rhv,   Sign::SUBTRACT); }
     else if (flag == Broadcast::SECOND) { return calculate(broadcast(rhv, n_dims), *this, Sign::SUBTRACT); }
     else if (flag == Broadcast::NONE)   { return calculate(                   *this, rhv, Sign::SUBTRACT); }
@@ -554,7 +562,7 @@ template <typename T>
 Array<T> 
 Array<T>::operator*(const Array<T>& rhv) const
 {
-    Broadcast flag = can_broadcast(*this, rhv);
+    const Broadcast flag = can_broadcast(*this, rhv);
     if (flag == Broadcast::FIRST) { return calculate(broadcast(*this, rhv.n_dims), rhv,   Sign::MULTIPLY); }
     else if (flag == Broadcast::SECOND) { return calculate(broadcast(rhv, n_dims), *this, Sign::MULTIPLY); }
     else if (flag == Broadcast::NONE)   { return calculate(                   *this, rhv, Sign::MULTIPLY); }
@@ -566,7 +574,7 @@ template <typename T>
 Array<T> 
 Array<T>::operator/(const Array<T>& rhv) const
 {
-    Broadcast flag = can_broadcast(*this, rhv);
+    const Broadcast flag = can_broadcast(*this, rhv);
     if (flag == Broadcast::FIRST) { return calculate(broadcast(*this, rhv.n_dims), rhv,   Sign::DIVIDE); }
     else if (flag == Broadcast::SECOND) { return calculate(broadcast(rhv, n_dims), *this, Sign::DIVIDE); }
     else if (flag == Broadcast::NONE)   { return calculate(                   *this, rhv, Sign::DIVIDE); }
@@ -815,9 +823,9 @@ Array<T>::can_broadcast(const Array<T>& first, const Array<T>& second)
     const std::vector<arg_type>& s1 = first.n_dims;
     const std::vector<arg_type>& s2 = second.n_dims;
 
-    size_t n1 = s1.size();
-    size_t n2 = s2.size();
-    size_t n  = std::max(n1, n2);
+    const size_t n1 = s1.size();
+    const size_t n2 = s2.size();
+    const size_t n  = std::max(n1, n2);
 
     bool needs_first  = false;
     bool needs_second = false;
@@ -901,6 +909,9 @@ Array<T>::calculate(const Array<T>& first, const Array<T>& second, Sign sign)
     Array<T> result(first.size());
     result.n_dims = first.n_dims;
     for (arg_type i = 0; i < result.size(); ++i) {
+        if (sign == Sign::DIVIDE && second[i] == 0) {
+            throw std::runtime_error("Division by zero in Viewer::calculate");
+        }
         switch (sign)
         {
         case Sign::SUM:      result[i] = first.n_data[i] + second.n_data[i]; break;

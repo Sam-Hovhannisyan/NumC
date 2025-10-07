@@ -2,35 +2,30 @@ CXX := g++
 CXXFLAGS := -std=c++17 -Wall -Iheaders -Itemplates
 LDFLAGS := -lgtest -lgtest_main -pthread
 
-# Only compile main and test sources (templates/Array.cpp is included in headers)
-SRC := main.cpp
+# Collect all cpp files automatically
+SRC := main.cpp $(wildcard sources/*.cpp)
 
-# Object files in build/
+# Object files
 OBJ := $(patsubst %.cpp, build/%.o, $(SRC))
 
-# Executables in build/debug/
+# Executable
 TARGET := build/debug/main
 
-.PHONY: all clean run test dirs
+.PHONY: all clean run dirs
 
 all: dirs $(TARGET)
 
-# Ensure build directories exist
 dirs:
-	mkdir -p build build/debug
+	mkdir -p build build/debug build/sources
 
-# Link main program
 $(TARGET): $(OBJ)
-	$(CXX) $(CXXFLAGS) $^ -o $@
+	$(CXX) $(CXXFLAGS) $(OBJ) -o $(TARGET) $(LDFLAGS)
 
-# Compile .cpp -> .o
-build/%.o: %.cpp headers/Array.hpp
+build/%.o: %.cpp
 	$(CXX) $(CXXFLAGS) -c $< -o $@
 
-# Run the program
 run: $(TARGET)
 	./$(TARGET)
 
-# Clean everything
 clean:
 	rm -rf build
