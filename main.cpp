@@ -67,6 +67,7 @@ int main()
     d.print_dims();
 
     Array<int> e1 = {1, 2, 3};
+    Global::Math::pow(e1, std::vector<int>({1, 2, 3})).print_data();
     Array<int> e2 = make_array({{10,20,30}, 
                                 {40,50,60}, 
                                 {70,80,90}});

@@ -8,6 +8,7 @@
 #include <vector>
 #include <cstdlib>
 #include <stdexcept>
+#include <numeric>
 
 namespace SamH::NumC
 {

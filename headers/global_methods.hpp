@@ -14,9 +14,6 @@ namespace SamH::NumC::Global
     // ----------------- MATH -----------------
     namespace Math 
     {
-        template <typename T, typename Func>
-        Array<T> apply(const Array<T>& arr, Func f);
-        
         template <typename T>
         T det(const Array<T>& arr);
     }
