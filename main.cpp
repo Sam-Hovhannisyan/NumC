@@ -5,6 +5,7 @@ using namespace SamH::NumC;
 
 int main()
 {
+    /*
     std::vector<int> v = {1, 2, 3, 4, 5, 6, 7};
     Array<int> numpy(v);
     Array<int> testSize(5);
@@ -77,6 +78,14 @@ int main()
                                    {70.0,80.0,90.0}});
 
     std::cout << "Determinant: " << Global::Math::det(e2) << std::endl;
+    Global::concatenate(e1, e2, 0).print_data();
+    Global::concatenate(e1, e2, 0).print_dims();
+    Global::concatenate(e1.reshape({1, 3}), e2, 0).print_data();
+    Global::concatenate(e1.reshape({1, 3}), e2, 0).print_dims();
+    Global::concatenate(e1.reshape({3, 1}), e2, 1).print_data();
+    Global::concatenate(e1.reshape({3, 1}), e2, 1).print_dims();
+    Global::concatenate(e2, e2, 1).print_data();
+
 
     Global::Math::log10(e4).print_data();
 
@@ -108,8 +117,32 @@ int main()
     random.print_data();
     random.print_dims();
 
-    Array<double> lt = {1, EulerConstant, Global::Math::exp(2.5), Global::Math::exp<double>(3)};
+    Array<double> lt = {1, E, Global::Math::exp(2.5), Global::Math::exp<double>(3)};
     Global::Math::log(lt).print_data();
+    */
+    
+    Array<int> id = Global::identity<int>(4);
+    id.print_data();
+    id.print_dims();
 
+    Array<int> z = Global::zeros<int>({4, 4});
+    z.print_data();
+    z.print_dims();
+
+    Array<int> e = Global::eye<int>(4, 8, 4, false);
+    e.print_data();
+    e.print_dims();
+
+    Mask a({true, false, true});
+    Mask b({true, true, true});
+
+    Mask res = Global::Bitwise::bitwise_or(a, b);
+    
+    for (auto i : res) {
+        std::cout << i << " ";
+    }
+    std::cout << std::endl;
+    
     return 0;
 }
+0 0 0 1 

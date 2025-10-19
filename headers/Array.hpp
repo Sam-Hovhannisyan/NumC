@@ -3,7 +3,6 @@
 #include "./numc_types.hpp"
 #include "./Mask.hpp"
 #include "./Viewer.hpp"
-#include "./random.hpp"
 #include "./global_methods.hpp"
 #include <vector>
 #include <cstdlib>
@@ -18,8 +17,6 @@ class Array
 {
 public:
 friend struct Viewer<T>;
-template <typename U>
-friend U Global::Math::det(const Array<U>& arr);
 
 struct Slice 
 {
@@ -60,6 +57,7 @@ public:
     Array(arg_type size = 0, const T& elem = T());
     Array(const T* arr, const arg_type len);
     Array(const std::vector<T>& vector);
+    Array(const std::vector<arg_type>& shape, T fill);
     Array(const T* from, const T* to);
     Array(const Array& rhv);
     Array(const std::initializer_list<T>& init);
@@ -76,7 +74,7 @@ public:
     Array<T>  operator()(const std::vector<Slice>& slices) const;
 
     Array<T> clip(arg_type min_val, arg_type max_val) const;
-    void reshape(const std::vector<arg_type>& new_shape);
+    Array<T> reshape(const std::vector<arg_type>& new_shape);
     
     Array<T> unique() const;
     Array<T> unique_sorted() const;
@@ -200,6 +198,7 @@ private:
 
 inline Mask logical_and(const Mask& x, const Mask& y);
 inline Mask logical_or (const Mask& x, const Mask& y);
+inline Mask logical_xor(const Mask& x, const Mask& y);
 inline Mask logical_not(const Mask& arr);
 
 }
@@ -207,3 +206,4 @@ inline Mask logical_not(const Mask& arr);
 #include "../templates/Array.ipp"
 #include "./make_array.hpp"
 #include "./Slice_impl.hpp"
+#include "./random.hpp"

@@ -30,7 +30,16 @@ Array<T>::Array(const std::vector<T>& vector)
 }
 
 template <typename T>
-Array<T>::Array(const T* from, const T* to)
+Array<T>::Array(const std::vector<arg_type>& shape, T fill)
+{
+    arg_type d = 1;
+    for (auto& i : shape) d *= i;
+    n_data = std::vector<T>(d, fill);
+    n_dims = shape;
+}
+
+template <typename T>
+Array<T>::Array(const T *from, const T *to)
 {
     arg_type size = 0;
     for (T* i = from; i != to; ++i, ++size) { n_data.push_back(*i); }
@@ -268,14 +277,17 @@ Array<T>::clip(arg_type min_val, arg_type max_val) const
 }
 
 template <typename T>
-void Array<T>::reshape(const std::vector<arg_type>& new_shape)
+Array<T> 
+Array<T>::reshape(const std::vector<arg_type>& new_shape)
 {
     arg_type sum1 = 1, sum2 = 1;
     for (auto& i : new_shape) sum1 *= i;
     for (auto& i : n_dims) sum2 *= i;
 
     if (sum1 != sum2) throw std::invalid_argument("Invalid shape size."); 
-    n_dims = new_shape;
+    Array<T> res(*this);
+    res.n_dims = new_shape;
+    return res;
 }
 
 template <typename T>
@@ -717,8 +729,26 @@ const std::vector<arg_type> &Array<T>::shape() const
 template <typename T>
 void Array<T>::print_data() const
 {
-    for (const auto& val : n_data) { std::cout << val << " "; }
-    std::cout << std::endl;
+    if (n_data.empty() || n_dims.empty()) {
+        return;
+    }
+    size_t cols = n_dims.back();
+    if (cols == 0) {
+        return;
+    }
+    arg_type column_counter = 0;
+
+    for (size_t i = 0; i < n_data.size(); ++i) {
+        std::cout << n_data[i] << " ";
+        ++column_counter;
+        if (column_counter == arg_type(cols)) {
+            std::cout << std::endl;
+            column_counter = 0;
+        }
+    }
+    if (column_counter != 0) {
+        std::cout << std::endl;
+    }
 }
 
 template <typename T>
@@ -870,6 +900,17 @@ logical_or(const Mask& x, const Mask& y)
     Mask res;
     for (auto i = 0; i < x.size(); ++i) {
         res.push_back(x[i] || y[i]);
+    }
+    return res;
+}
+
+Mask 
+logical_xor(const Mask& x, const Mask& y)
+{
+    assert(x.size() == y.size());
+    Mask res;
+    for (auto i = 0; i < x.size(); ++i) {
+        res.push_back(x[i] ^ y[i]);
     }
     return res;
 }

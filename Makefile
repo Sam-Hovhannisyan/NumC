@@ -2,8 +2,8 @@ CXX := g++
 CXXFLAGS := -std=c++17 -Wall -Iheaders -Itemplates
 LDFLAGS := -lgtest -lgtest_main -pthread
 
-# Collect all cpp files automatically
-SRC := main.cpp $(wildcard sources/*.cpp)
+# Only compile main program
+SRC := main.cpp
 
 # Object files
 OBJ := $(patsubst %.cpp, build/%.o, $(SRC))
@@ -15,17 +15,22 @@ TARGET := build/debug/main
 
 all: dirs $(TARGET)
 
+# Create build directories
 dirs:
-	mkdir -p build build/debug build/sources
+	mkdir -p build build/debug
 
-$(TARGET): $(OBJ)
-	$(CXX) $(CXXFLAGS) $(OBJ) -o $(TARGET) $(LDFLAGS)
-
+# Compile main.cpp -> object
 build/%.o: %.cpp
 	$(CXX) $(CXXFLAGS) -c $< -o $@
 
+# Link executable
+$(TARGET): $(OBJ)
+	$(CXX) $(CXXFLAGS) $(OBJ) -o $@ $(LDFLAGS)
+
+# Run program
 run: $(TARGET)
 	./$(TARGET)
 
+# Clean build
 clean:
 	rm -rf build

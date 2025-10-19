@@ -1,5 +1,6 @@
 #include <stdexcept>
 #include <type_traits>
+#include <functional>
 
 namespace SamH::NumC {
     template <typename T>
@@ -165,13 +166,6 @@ namespace Math {
     } \
 
     // ----------------- Unary functions -----------------
-    DEFINE_UNARY_FUNC(exp)
-    DEFINE_UNARY_FUNC(exp2)
-    DEFINE_UNARY_FUNC(expm1)
-    DEFINE_UNARY_FUNC(log)
-    DEFINE_UNARY_FUNC(log2)
-    DEFINE_UNARY_FUNC(log10)
-    DEFINE_UNARY_FUNC(log1p)
     DEFINE_UNARY_FUNC(sin)
     DEFINE_UNARY_FUNC(cos)
     DEFINE_UNARY_FUNC(tan)
@@ -184,28 +178,37 @@ namespace Math {
     DEFINE_UNARY_FUNC(asinh)
     DEFINE_UNARY_FUNC(acosh)
     DEFINE_UNARY_FUNC(atanh)
-    DEFINE_UNARY_FUNC(sqrt)
-    DEFINE_UNARY_FUNC(abs)
-    DEFINE_UNARY_FUNC(ceil)
-    DEFINE_UNARY_FUNC(floor)
     DEFINE_UNARY_FUNC(round)
-    DEFINE_UNARY_FUNC(trunc)
-    DEFINE_UNARY_FUNC(nearbyint)
     DEFINE_UNARY_FUNC(rint)
+    DEFINE_UNARY_FUNC(floor)
+    DEFINE_UNARY_FUNC(ceil)
+    DEFINE_UNARY_FUNC(trunc)
+    DEFINE_UNARY_FUNC(exp)
+    DEFINE_UNARY_FUNC(expm1)
+    DEFINE_UNARY_FUNC(exp2)
+    DEFINE_UNARY_FUNC(log)
+    DEFINE_UNARY_FUNC(log10)
+    DEFINE_UNARY_FUNC(log2)
+    DEFINE_UNARY_FUNC(log1p)
+    DEFINE_UNARY_FUNC(sqrt)
+    DEFINE_UNARY_FUNC(cbrt)
+    DEFINE_UNARY_FUNC(abs)
+    DEFINE_UNARY_FUNC(fabs)
+    DEFINE_UNARY_FUNC(nearbyint)
 
     // int-returning
     DEFINE_UNARY_INT_FUNC(lround, long, resolve_lround)
     DEFINE_UNARY_INT_FUNC(llround, long long, resolve_llround)
 
     // ----------------- Binary functions -----------------
-    DEFINE_BINARY_FUNC(pow)
     DEFINE_BINARY_FUNC(hypot)
+    DEFINE_BINARY_FUNC(atan2)
+    DEFINE_BINARY_FUNC(pow)
     DEFINE_BINARY_FUNC(fmod)
     DEFINE_BINARY_FUNC(remainder)
     DEFINE_BINARY_FUNC(fmin)
     DEFINE_BINARY_FUNC(fmax)
     DEFINE_BINARY_FUNC(fdim)
-    DEFINE_BINARY_FUNC(atan2)
     DEFINE_BINARY_FUNC(copysign)
     DEFINE_BINARY_FUNC(nextafter)
 
@@ -224,12 +227,12 @@ namespace Math {
     // ----------------- Determinant -----------------
     template <typename T>
     T det(const Array<T>& arr) {
-        if (arr.n_dims.size() != 2 || arr.n_dims[0] != arr.n_dims[1])
+        if (arr.shape().size() != 2 || arr.shape()[0] != arr.shape()[1])
             throw std::invalid_argument("Determinant requires a square matrix");
 
         auto mat = arr;
         double det = 1.0;
-        auto n = arr.n_dims[0];
+        auto n = arr.shape()[0];
         for (arg_type i = 0; i < n; ++i) {
             arg_type pivot = i;
             for (arg_type j = i + 1; j < n; ++j)
@@ -254,4 +257,252 @@ namespace Math {
     }
 
 } // namespace Math
+
+// Bitwise operators
+
+// --- Bitwise AND ---
+
+// FIX 2: Signature must include std::enable_if_t matching the header declaration
+template <typename T>
+std::enable_if_t<std::is_integral_v<T>, T> Bitwise::bitwise_and(T n1, T n2)
+{
+    return n1 & n2;
+}
+
+template <typename T>
+Array<T> Bitwise::bitwise_and(const Array<T>& arr1, const Array<T>& arr2)
+{
+    // Uses the private binary helper
+    return bitwise_binary_op<T, Array<T>>(arr1, arr2, std::bit_and<T>{});
+}
+
+// FIX 1: T is no longer part of the signature, but we must deduce T for the helper call.
+// Since T is not deducible from Mask arguments, we assume it can be any integral type, 
+// and the container type is Mask. We use int as a dummy T for the helper.
+Mask Bitwise::bitwise_and(const Mask& mask1, const Mask& mask2)
+{
+    return bitwise_binary_op<int, Mask>(mask1, mask2, std::bit_and<bool>{});
+}
+
+// --- Bitwise OR ---
+
+// FIX 2: Signature must include std::enable_if_t matching the header declaration
+template <typename T>
+std::enable_if_t<std::is_integral_v<T>, T> Bitwise::bitwise_or(T n1, T n2)
+{
+    return n1 | n2;
+}
+
+template <typename T>
+Array<T> Bitwise::bitwise_or(const Array<T>& arr1, const Array<T>& arr2)
+{
+    return bitwise_binary_op<T, Array<T>>(arr1, arr2, std::bit_or<T>{});
+}
+
+Mask Bitwise::bitwise_or(const Mask& mask1, const Mask& mask2)
+{
+    return bitwise_binary_op<int, Mask>(mask1, mask2, std::bit_or<bool>{});
+}
+
+// --- Bitwise XOR ---
+
+// FIX 2: Signature must include std::enable_if_t matching the header declaration
+template <typename T>
+std::enable_if_t<std::is_integral_v<T>, T> Bitwise::bitwise_xor(T n1, T n2)
+{
+    return n1 ^ n2;
+}
+
+template <typename T>
+Array<T> Bitwise::bitwise_xor(const Array<T>& arr1, const Array<T>& arr2)
+{
+    return bitwise_binary_op<T, Array<T>>(arr1, arr2, std::bit_xor<T>{});
+}
+
+Mask Bitwise::bitwise_xor(const Mask& mask1, const Mask& mask2)
+{
+    return bitwise_binary_op<int, Mask>(mask1, mask2, std::bit_xor<bool>{});
+}
+
+// --- Bitwise NOT ---
+
+// FIX 2: Signature must include std::enable_if_t matching the header declaration
+template <typename T>
+std::enable_if_t<std::is_integral_v<T>, T> Bitwise::bitwise_not(T n)
+{
+    return ~n;
+}
+
+template <typename T>
+Array<T> Bitwise::bitwise_not(const Array<T>& arr)
+{
+    return bitwise_unary_op<T, Array<T>>(arr, std::bit_not<T>{});
+}
+
+Mask Bitwise::bitwise_not(const Mask& mask)
+{
+    // The Mask logic uses logical NOT (!), and we use int as a dummy T for the helper
+    return bitwise_unary_op<int, Mask>(mask, std::logical_not<bool>{});
+}
+
+// --- Invert (Delegates to bitwise_not) ---
+
+// FIX 2: Signature must include std::enable_if_t matching the header declaration
+template <typename T>
+std::enable_if_t<std::is_integral_v<T>, T> Bitwise::invert(T n)
+{
+    return bitwise_not(n);
+}
+
+template <typename T>
+Array<T> Bitwise::invert(const Array<T>& arr)
+{
+    return bitwise_not(arr);
+}
+
+Mask Bitwise::invert(const Mask& mask)
+{
+    return bitwise_not(mask);
+}
+
+// Bitwise operators end
+
+template <typename T>
+Array<T> concatenate(const Array<T>& arr1, const Array<T>& arr2, arg_type axis)
+{
+    // Get shapes
+    std::vector<arg_type> s1 = arr1.shape();
+    std::vector<arg_type> s2 = arr2.shape();
+
+    // Promote 1D arrays when axis > 0
+    if (s1.size() == 1 && axis > 0) s1.insert(s1.begin(), 1);
+    if (s2.size() == 1 && axis > 0) s2.insert(s2.begin(), 1);
+
+    // Equalize dimensions
+    arg_type ndim = std::max(s1.size(), s2.size());
+    std::vector<arg_type> shape1(ndim, 1), shape2(ndim, 1);
+    std::copy(s1.begin(), s1.end(), shape1.end() - s1.size());
+    std::copy(s2.begin(), s2.end(), shape2.end() - s2.size());
+
+    // Validate axis
+    if (axis < 0 || axis >= ndim)
+        throw std::out_of_range("Concatenation::Axis out of range");
+
+    // Validate shape compatibility
+    for (arg_type i = 0; i < ndim; ++i)
+        if (i != axis && shape1[i] != shape2[i])
+            throw std::invalid_argument("Concatenation::Shapes do not match on non-concatenation axes");
+
+    // Build output shape
+    std::vector<arg_type> new_shape(ndim);
+    for (arg_type i = 0; i < ndim; ++i)
+        new_shape[i] = (i == axis) ? shape1[i] + shape2[i] : shape1[i];
+
+    Array<T> ans(new_shape, T());
+
+    // Compute total size
+    arg_type total_size1 = 1, total_size2 = 1, total_size_out = 1;
+    for (arg_type v : shape1) total_size1 *= v;
+    for (arg_type v : shape2) total_size2 *= v;
+    for (arg_type v : new_shape) total_size_out *= v;
+
+    // Compute the number of "inner elements" after the concatenation axis
+    arg_type inner_block = 1;
+    for (arg_type i = axis + 1; i < ndim; ++i)
+        inner_block *= new_shape[i];
+
+    // Compute how many outer slices exist before the concatenation axis
+    arg_type outer_blocks = 1;
+    for (arg_type i = 0; i < axis; ++i)
+        outer_blocks *= new_shape[i];
+
+    arg_type axis_size1 = shape1[axis];
+    arg_type axis_size2 = shape2[axis];
+
+    // Copy values flat-wise
+    arg_type index_out = 0;
+    arg_type index1 = 0;
+    arg_type index2 = 0;
+
+    for (arg_type ob = 0; ob < outer_blocks; ++ob)
+    {
+        // Copy arr1 slice
+        for (arg_type i = 0; i < axis_size1 * inner_block; ++i)
+        {
+            if (index1 >= arr1.size()) break;
+            ans[index_out++] = arr1[index1++];
+        }
+
+        // Copy arr2 slice
+        for (arg_type i = 0; i < axis_size2 * inner_block; ++i)
+        {
+            if (index2 >= arr2.size()) break;
+            ans[index_out++] = arr2[index2++];
+        }
+    }
+
+    return ans;
+}
+
+template <typename T>
+Array<T>
+zeros(const std::vector<arg_type>& dims)
+{
+    return Array<T>(dims, T(0));
+}
+
+template <typename T>
+Array<T> 
+zeros_like(const Array<T>& arr)
+{
+    return Array<T>(arr.shape(), T(0));
+}
+
+template <typename T>
+Array<T>
+ones(const std::vector<arg_type>& dims)
+{
+    return Array<T>(dims, T(1));
+}
+
+template <typename T>
+Array<T> 
+ones_like(const Array<T>& arr)
+{
+    return Array<T>(arr.shape(), T(1));
+}
+
+template <typename T>
+Array<T>
+identity(arg_type size)
+{
+    if (size < 0) throw std::invalid_argument("Invalid size argument");
+    Array<T> res = Array<T>({size, size}, T(0));
+    for (arg_type i = 0; i < size; ++i) {
+        res.get_value({i, i}) = T(1);
+    }
+    return res;
+}
+
+template <typename T>
+Array<T> 
+eye(arg_type n, arg_type m, arg_type k, bool order)
+{
+    Array<T> res = Array<T>({n, m}, T(0));
+    if (!order) {
+        for (arg_type i = 0; i < n; ++i) {
+            arg_type j = i + k;
+            if (j >= 0 && j < m)
+                res.get_value({i, j}) = T(1);
+        }
+    } else {
+        for (arg_type j = 0; j < m; ++j) {
+            arg_type i = j - k;
+            if (i >= 0 && i < n)
+                res.get_value({i, j}) = T(1);
+        }
+    }
+    return res;
+}
+
 } // namespace Global
